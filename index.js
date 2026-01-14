@@ -16,7 +16,7 @@ const loginController = require("./controller/loginController");
 const registrationController = require("./controller/registrationController");
 const authController = require("./controller/authController");
 const authMiddleware = require("./middleware/authMiddleware");
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(cors({
     origin: FRONTEND_URL,
@@ -40,6 +40,6 @@ app.use("/register", registrationController(sql));
 app.use("/auth", authController());
 
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0",() => {
     console.log(`Server is running on port ${port}`);
 });
