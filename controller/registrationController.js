@@ -18,46 +18,47 @@ const registrationController = (sql) => {
 
         // Validazione campi obbligatori
         if (!nome || !cognome || !email || !password) {
-            return res.status(400).json({ 
-                error: "Nome, cognome, email e password sono obbligatori" 
+            return res.status(400).json({
+                error: "Nome, cognome, email e password sono obbligatori"
             });
         }
 
         // Validazione del ruolo (se fornito)
         if (ruolo && ruolo !== "Dipendente" && ruolo !== "Responsabile") {
-            return res.status(400).json({ 
-                error: "Il ruolo deve essere 'Dipendente' o 'Responsabile'" 
+            return res.status(400).json({
+                error: "Il ruolo deve essere 'Dipendente' o 'Responsabile'"
             });
         }
 
         // Validazione formato email (base)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ 
-                error: "Formato email non valido" 
+            return res.status(400).json({
+                error: "Formato email non valido"
             });
         }
 
         // Validazione lunghezza password
         if (password.length < 6) {
-            return res.status(400).json({ 
-                error: "La password deve essere di almeno 6 caratteri" 
+            return res.status(400).json({
+                error: "La password deve essere di almeno 6 caratteri"
             });
         }
 
         try {
             // Verifica se l'email esiste già
             console.log("[REGISTRAZIONE] Verifica email:", email);
+            console.log("[REGISTRAZIONE] Dati ricevuti:", { nome, cognome, email, ruolo });
             const checkResult = await sql`
-                SELECT Email 
-                FROM Utente 
-                WHERE Email = ${email}
+                SELECT "Email" 
+                FROM "Utente" 
+                WHERE "Email" = ${email}
             `;
 
             if (checkResult.length > 0) {
                 console.log("[REGISTRAZIONE] Email già registrata:", email);
-                return res.status(409).json({ 
-                    error: "Email già registrata" 
+                return res.status(409).json({
+                    error: "Email già registrata"
                 });
             }
 
@@ -69,57 +70,57 @@ const registrationController = (sql) => {
             // Inserisci il nuovo utente nel database
             // Se ruolo non è specificato, il database userà il default 'Dipendente'
             let result;
-            
+
             if (ruolo) {
                 console.log("[REGISTRAZIONE] Inserimento con ruolo:", ruolo);
                 result = await sql`
-                    INSERT INTO Utente (Nome, Cognome, Email, Password, Ruolo)
+                    INSERT INTO "Utente" ("Nome", "Cognome", "Email", "Password", "Ruolo")
                     VALUES (${nome}, ${cognome}, ${email}, ${hashedPassword}, ${ruolo})
-                    RETURNING UtenteID, Nome, Cognome, Email, Ruolo
+                    RETURNING "UtenteID", "Nome", "Cognome", "Email", "Ruolo"
                 `;
             } else {
                 console.log("[REGISTRAZIONE] Inserimento senza ruolo (usa default)");
                 result = await sql`
-                    INSERT INTO Utente (Nome, Cognome, Email, Password)
+                    INSERT INTO "Utente" ("Nome", "Cognome", "Email", "Password")
                     VALUES (${nome}, ${cognome}, ${email}, ${hashedPassword})
-                    RETURNING UtenteID, Nome, Cognome, Email, Ruolo
+                    RETURNING "UtenteID", "Nome", "Cognome", "Email", "Ruolo"
                 `;
             }
 
             const newUser = result[0];
-            console.log("[REGISTRAZIONE] Utente creato con successo - ID:", newUser.utenteid);
+            console.log("[REGISTRAZIONE] Utente creato con successo - ID:", newUser.UtenteID);
 
             // Restituisci i dati dell'utente creato (senza password)
             return res.status(201).json({
                 message: "Utente registrato con successo",
                 user: {
-                    id: newUser.utenteid,
-                    nome: newUser.nome,
-                    cognome: newUser.cognome,
-                    email: newUser.email,
-                    ruolo: newUser.ruolo
+                    id: newUser.UtenteID,
+                    nome: newUser.Nome,
+                    cognome: newUser.Cognome,
+                    email: newUser.Email,
+                    ruolo: newUser.Ruolo
                 }
             });
 
         } catch (err) {
             console.error("[REGISTRAZIONE] Errore durante la registrazione:", err);
-            
+
             // Gestisci errori specifici di PostgreSQL
             if (err.code === '23505') { // Unique violation
-                return res.status(409).json({ 
-                    error: "Email già registrata" 
+                return res.status(409).json({
+                    error: "Email già registrata"
                 });
             }
 
             if (err.code === '22001') { // String too long
-                return res.status(400).json({ 
-                    error: "Uno dei campi supera la lunghezza massima consentita" 
+                return res.status(400).json({
+                    error: "Uno dei campi supera la lunghezza massima consentita"
                 });
             }
 
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: "Errore interno del server",
-                details: err.message 
+                details: err.message
             });
         }
     });

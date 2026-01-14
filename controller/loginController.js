@@ -27,9 +27,9 @@ const loginController = (sql) => {
         try {
             // Cerca l'utente per email nella tabella Utente
             const result = await sql`
-                SELECT UtenteID, Nome, Cognome, Email, Password, Ruolo 
-                FROM Utente 
-                WHERE Email = ${email}
+                SELECT "UtenteID", "Nome", "Cognome", "Email", "Password", "Ruolo" 
+                FROM "Utente" 
+                WHERE "Email" = ${email}
             `;
 
             if (result.length === 0) {
@@ -41,7 +41,7 @@ const loginController = (sql) => {
             const utente = result[0];
 
             // Confronta la password fornita con l'hash salvato nel DB
-            const passwordMatch = await bcrypt.compare(password, utente.password);
+            const passwordMatch = await bcrypt.compare(password, utente.Password);
             if (!passwordMatch) {
                 console.log("[LOGIN] Password errata per:", email);
                 return res.status(401).json({ error: "Credenziali non valide" });
@@ -52,11 +52,11 @@ const loginController = (sql) => {
             // Genera il Token JWT per la gestione della Session
             const token = jwt.sign(
                 {
-                    id: utente.utenteid,
-                    email: utente.email,
-                    nome: utente.nome,
-                    cognome: utente.cognome,
-                    ruolo: utente.ruolo
+                    id: utente.UtenteID,
+                    email: utente.Email,
+                    nome: utente.Nome,
+                    cognome: utente.Cognome,
+                    ruolo: utente.Ruolo
                 },
                 process.env.JWT_SECRET || "segreto_super_sicuro_da_cambiare",
                 { expiresIn: "24h" } // 24 ore
@@ -79,11 +79,11 @@ const loginController = (sql) => {
             return res.json({
                 message: "Login effettuato con successo",
                 user: {
-                    id: utente.utenteid,
-                    nome: utente.nome,
-                    cognome: utente.cognome,
-                    email: utente.email,
-                    ruolo: utente.ruolo
+                    id: utente.UtenteID,
+                    nome: utente.Nome,
+                    cognome: utente.Cognome,
+                    email: utente.Email,
+                    ruolo: utente.Ruolo
                 }
             });
         } catch (err) {
