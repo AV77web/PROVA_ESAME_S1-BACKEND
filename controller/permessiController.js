@@ -237,6 +237,108 @@ const permessiController = (sql) => {
         }
     });
 
+    // PUT - Modifica una richiesta di permesso (solo se propria e in attesa)
+    router.put("/:id", async (req, res) => {
+        console.log("[PERMESSI] Modifica richiesta ID:", req.params.id);
+        const { id } = req.params;
+        const { dataInizio, dataFine, categoriaId, motivazione } = req.body || {};
+
+        // Validazione campi
+        if (!dataInizio || !dataFine || !categoriaId) {
+            return res.status(400).json({
+                error: "DataInizio, DataFine e CategoriaID sono obbligatori"
+            });
+        }
+
+        // Validazione date
+        const inizio = new Date(dataInizio);
+        const fine = new Date(dataFine);
+
+        if (inizio >= fine) {
+            return res.status(400).json({
+                error: "La data di fine deve essere successiva alla data di inizio"
+            });
+        }
+
+        try {
+            // Verifica che la richiesta esista e sia in attesa
+            const checkRequest = await sql`
+                SELECT "RichiestaID" as "RichiestaID", "Stato" as "Stato", "UtenteID" as "UtenteID"
+                FROM "RichiestaPermesso" 
+                WHERE "RichiestaID" = ${id}
+            `;
+
+            if (checkRequest.length === 0) {
+                return res.status(404).json({
+                    error: "Richiesta non trovata"
+                });
+            }
+
+            const richiesta = checkRequest[0];
+
+            // Verifica che la richiesta sia in attesa
+            if (richiesta.Stato !== "In attesa") {
+                return res.status(400).json({
+                    error: "Non è possibile modificare una richiesta già valutata"
+                });
+            }
+
+            // Verifica che l'utente stia modificando la propria richiesta
+            // (req.user.id viene dal middleware di autenticazione)
+            if (req.user && req.user.id !== richiesta.UtenteID) {
+                return res.status(403).json({
+                    error: "Non hai i permessi per modificare questa richiesta"
+                });
+            }
+
+            // Verifica che la categoria esista
+            const categoriaCheck = await sql`
+                SELECT "CategoriaID" FROM "CategoriaPermesso" WHERE "CategoriaID" = ${categoriaId}
+            `;
+
+            if (categoriaCheck.length === 0) {
+                return res.status(404).json({
+                    error: "Categoria non trovata"
+                });
+            }
+
+            // Aggiorna la richiesta
+            const result = await sql`
+                UPDATE "RichiestaPermesso"
+                SET 
+                    "DataInizio" = ${dataInizio},
+                    "DataFine" = ${dataFine},
+                    "CategoriaID" = ${categoriaId},
+                    "Motivazione" = ${motivazione || ''}
+                WHERE "RichiestaID" = ${id}
+                RETURNING 
+                    "RichiestaID" as "RichiestaID", 
+                    "DataRichiesta" as "DataRichiesta",
+                    "DataInizio" as "DataInizio", 
+                    "DataFine" as "DataFine", 
+                    "CategoriaID" as "CategoriaID", 
+                    "Motivazione" as "Motivazione", 
+                    "Stato" as "Stato", 
+                    "UtenteID" as "UtenteID"
+            `;
+
+            console.log(`[PERMESSI] Richiesta ${id} modificata con successo`);
+
+            return res.json({
+                success: true,
+                message: "Richiesta modificata con successo",
+                data: result[0]
+            });
+
+        } catch (err) {
+            console.error("[PERMESSI] Errore nella modifica:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
     // PUT - Valuta una richiesta (approva o rifiuta)
     router.put("/:id/valuta", async (req, res) => {
         console.log("[PERMESSI] Valutazione richiesta ID:", req.params.id);
