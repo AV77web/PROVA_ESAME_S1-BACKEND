@@ -16,6 +16,9 @@ const loginController = require("./controller/loginController");
 const registrationController = require("./controller/registrationController");
 const authController = require("./controller/authController");
 const authMiddleware = require("./middleware/authMiddleware");
+const permessiController = require("./controller/permessiController");
+const categorieController = require("./controller/categorieController");
+const {verifyToken, verifyRole} = require("./middleware/authMiddleware");
 const port = process.env.PORT || 3000;
 
 // FRONTEND_URL da Environment Variable ha priorità su config.js
@@ -43,6 +46,8 @@ app.get("/", (req, res) => {
 app.use("/login", loginController(sql));
 app.use("/register", registrationController(sql));
 app.use("/auth", authController());
+app.use("/permessi", verifyToken, permessiController(sql));
+app.use("/categorie", verifyToken, categorieController(sql));
 
 
 app.listen(port, "0.0.0.0", () => {
