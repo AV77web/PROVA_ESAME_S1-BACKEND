@@ -27,8 +27,8 @@ const categorieController = (sql) => {
                 success: true,
                 count: result.length,
                 data: result.map(cat => ({
-                    id: cat.categoriaid,
-                    descrizione: cat.descrizione
+                    CategoriaID: cat.CategoriaID,
+                    Descrizione: cat.Descrizione
                 }))
             });
 
@@ -62,8 +62,8 @@ const categorieController = (sql) => {
             return res.json({
                 success: true,
                 data: {
-                    id: result[0].categoriaid,
-                    descrizione: result[0].descrizione
+                    CategoriaID: result[0].CategoriaID,
+                    Descrizione: result[0].Descrizione
                 }
             });
 
@@ -114,14 +114,14 @@ const categorieController = (sql) => {
             `;
 
             const newCategory = result[0];
-            console.log("[CATEGORIE] Categoria creata con ID:", newCategory.categoriaid);
+            console.log("[CATEGORIE] Categoria creata con ID:", newCategory.CategoriaID);
 
             return res.status(201).json({
                 success: true,
                 message: "Categoria creata con successo",
                 data: {
-                    id: newCategory.categoriaid,
-                    descrizione: newCategory.descrizione
+                    CategoriaID: newCategory.CategoriaID,
+                    Descrizione: newCategory.Descrizione
                 }
             });
 
