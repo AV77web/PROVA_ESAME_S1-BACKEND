@@ -9,7 +9,10 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 
-const authController = () => {
+const authController = (sql) => {
+    // sql è opzionale, non viene usato in questo controller
+    // ma lo accettiamo per consistenza con gli altri controller
+
     // Verifica lo stato di autenticazione (protetto dal middleware)
     // GET /me - Restituisce i dati dell'utente autenticato
     router.get("/me", authMiddleware, (req, res) => {
