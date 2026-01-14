@@ -11,12 +11,17 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const { neon } = require("@neondatabase/serverless")
 const cors = require("cors");
-const { FRONTEND_URL } = require("./config");
+const { FRONTEND_URL: DEFAULT_FRONTEND_URL } = require("./config");
 const loginController = require("./controller/loginController");
 const registrationController = require("./controller/registrationController");
 const authController = require("./controller/authController");
 const authMiddleware = require("./middleware/authMiddleware");
 const port = process.env.PORT || 3000;
+
+// FRONTEND_URL da Environment Variable ha priorità su config.js
+const FRONTEND_URL = process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
+
+console.log(`[CORS] Frontend URL configurato: ${FRONTEND_URL}`);
 
 app.use(cors({
     origin: FRONTEND_URL,
