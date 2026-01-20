@@ -134,6 +134,125 @@ const categorieController = (sql) => {
         }
     });
 
+    // PUT - Modifica una categoria esistente (solo Responsabile)
+    router.put("/:id", async (req, res) => {
+        console.log("[CATEGORIE] Modifica categoria ID:", req.params.id);
+        const { id } = req.params;
+        const { descrizione } = req.body || {};
+
+        if (!descrizione) {
+            return res.status(400).json({
+                error: "La descrizione è obbligatoria"
+            });
+        }
+
+        try {
+            // Verifica se la categoria esiste
+            const checkExists = await sql`
+                SELECT "CategoriaID" FROM "CategoriaPermesso" 
+                WHERE "CategoriaID" = ${id}
+            `;
+
+            if (checkExists.length === 0) {
+                return res.status(404).json({
+                    error: "Categoria non trovata"
+                });
+            }
+
+            // Verifica se esiste già un'altra categoria con la stessa descrizione
+            const checkDuplicate = await sql`
+                SELECT "CategoriaID" FROM "CategoriaPermesso" 
+                WHERE LOWER("Descrizione") = LOWER(${descrizione}) 
+                AND "CategoriaID" != ${id}
+            `;
+
+            if (checkDuplicate.length > 0) {
+                return res.status(409).json({
+                    error: "Esiste già un'altra categoria con questa descrizione"
+                });
+            }
+
+            // Aggiorna la categoria
+            const result = await sql`
+                UPDATE "CategoriaPermesso" 
+                SET "Descrizione" = ${descrizione}
+                WHERE "CategoriaID" = ${id}
+                RETURNING "CategoriaID", "Descrizione"
+            `;
+
+            console.log("[CATEGORIE] Categoria modificata con ID:", result[0].CategoriaID);
+
+            return res.json({
+                success: true,
+                message: "Categoria modificata con successo",
+                data: {
+                    CategoriaID: result[0].CategoriaID,
+                    Descrizione: result[0].Descrizione
+                }
+            });
+
+        } catch (err) {
+            console.error("[CATEGORIE] Errore nella modifica:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
+    // DELETE - Elimina una categoria (solo Responsabile)
+    router.delete("/:id", async (req, res) => {
+        console.log("[CATEGORIE] Eliminazione categoria ID:", req.params.id);
+        const { id } = req.params;
+
+        try {
+            // Verifica se la categoria esiste
+            const checkExists = await sql`
+                SELECT "CategoriaID" FROM "CategoriaPermesso" 
+                WHERE "CategoriaID" = ${id}
+            `;
+
+            if (checkExists.length === 0) {
+                return res.status(404).json({
+                    error: "Categoria non trovata"
+                });
+            }
+
+            // Verifica se ci sono richieste associate (RESTRICT constraint)
+            const checkUsage = await sql`
+                SELECT COUNT(*) as count FROM "RichiestaPermesso" 
+                WHERE "CategoriaID" = ${id}
+            `;
+
+            if (parseInt(checkUsage[0].count) > 0) {
+                return res.status(409).json({
+                    error: "Impossibile eliminare: ci sono richieste associate a questa categoria",
+                    details: `Trovate ${checkUsage[0].count} richieste`
+                });
+            }
+
+            // Elimina la categoria
+            await sql`
+                DELETE FROM "CategoriaPermesso" 
+                WHERE "CategoriaID" = ${id}
+            `;
+
+            console.log("[CATEGORIE] Categoria eliminata con ID:", id);
+
+            return res.json({
+                success: true,
+                message: "Categoria eliminata con successo"
+            });
+
+        } catch (err) {
+            console.error("[CATEGORIE] Errore nell'eliminazione:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
     return router;
 };
 
