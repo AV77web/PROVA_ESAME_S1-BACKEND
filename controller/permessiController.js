@@ -11,6 +11,8 @@ const router = express.Router();
 const permessiController = (sql) => {
 
     // GET - Ottieni tutte le richieste di permesso (con filtri opzionali)
+    // Dipendenti: vedono solo le proprie richieste
+    // Responsabili: vedono tutte le richieste
     router.get("/", async (req, res) => {
         console.log("[PERMESSI] Richiesta lista permessi");
         const { utenteId, stato, categoriaId } = req.query;
@@ -18,69 +20,71 @@ const permessiController = (sql) => {
         try {
             let result;
 
-            // Se viene specificato un utente, mostra solo i suoi permessi
-            if (utenteId) {
-                result = await sql`
-                    SELECT 
-                        rp."RichiestaID", 
-                        rp."DataRichiesta", 
-                        rp."DataInizio", 
-                        rp."DataFine",
-                        rp."Motivazione", 
-                        rp."Stato", 
-                        rp."DataValutazione",
-                        rp."UtenteID",
-                        u."Nome" as richiedentenome,
-                        u."Cognome" as richiedentecognome,
-                        u."Email" as richiedenteemail,
-                        cp."CategoriaID",
-                        cp."Descrizione" as categoriadescrizione,
-                        val."Nome" as valutatornome,
-                        val."Cognome" as valutatorcognome
-                    FROM "RichiestaPermesso" rp
-                    INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
-                    INNER JOIN "CategoriaPermesso" cp ON rp."CategoriaID" = cp."CategoriaID"
-                    LEFT JOIN "Utente" val ON rp."UtenteValutazioneID" = val."UtenteID"
-                    WHERE rp."UtenteID" = ${utenteId}
-                    ${stato ? sql`AND rp."Stato" = ${stato}::stato_richiesta_enum` : sql``}
-                    ORDER BY rp."DataRichiesta" DESC
-                `;
+            // Se l'utente è un Dipendente, può vedere solo le proprie richieste
+            const userUtenteId = req.user?.id ? parseInt(req.user.id) : null;
+            const isResponsabile = req.user?.ruolo === "Responsabile";
+
+            // Determina quale utenteId usare per la query
+            let queryUtenteId = null;
+
+            if (req.user?.ruolo === "Dipendente") {
+                // I dipendenti possono vedere solo le proprie richieste
+                queryUtenteId = userUtenteId;
+            } else if (isResponsabile && utenteId) {
+                // I responsabili possono filtrare per un utente specifico se richiesto
+                queryUtenteId = parseInt(utenteId);
+            } else if (isResponsabile) {
+                // I responsabili possono vedere tutte le richieste
+                queryUtenteId = null;
             } else {
-                // Tutte le richieste (admin view)
-                const filters = [];
-                if (stato) filters.push(sql`rp."Stato" = ${stato}::stato_richiesta_enum`);
-                if (categoriaId) filters.push(sql`rp."CategoriaID" = ${categoriaId}`);
-
-                const whereClause = filters.length > 0
-                    ? sql`WHERE ${sql(filters.reduce((acc, curr, i) =>
-                        i === 0 ? curr : sql`${acc} AND ${curr}`))}`
-                    : sql``;
-
-                result = await sql`
-                    SELECT 
-                        rp."RichiestaID", 
-                        rp."DataRichiesta", 
-                        rp."DataInizio", 
-                        rp."DataFine",
-                        rp."Motivazione", 
-                        rp."Stato", 
-                        rp."DataValutazione",
-                        rp."UtenteID",
-                        u."Nome" as richiedentenome,
-                        u."Cognome" as richiedentecognome,
-                        u."Email" as richiedenteemail,
-                        cp."CategoriaID",
-                        cp."Descrizione" as categoriadescrizione,
-                        val."Nome" as valutatornome,
-                        val."Cognome" as valutatorcognome
-                    FROM "RichiestaPermesso" rp
-                    INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
-                    INNER JOIN "CategoriaPermesso" cp ON rp."CategoriaID" = cp."CategoriaID"
-                    LEFT JOIN "Utente" val ON rp."UtenteValutazioneID" = val."UtenteID"
-                    ${whereClause}
-                    ORDER BY rp."DataRichiesta" DESC
-                `;
+                // Default: solo proprie richieste per sicurezza
+                queryUtenteId = userUtenteId;
             }
+
+            // Costruisci i filtri
+            const filters = [];
+
+            if (queryUtenteId) {
+                filters.push(sql`rp."UtenteID" = ${queryUtenteId}`);
+            }
+
+            if (stato) {
+                filters.push(sql`rp."Stato" = ${stato}::stato_richiesta_enum`);
+            }
+
+            if (categoriaId) {
+                filters.push(sql`rp."CategoriaID" = ${parseInt(categoriaId)}`);
+            }
+
+            const whereClause = filters.length > 0
+                ? sql`WHERE ${sql(filters.reduce((acc, curr, i) =>
+                    i === 0 ? curr : sql`${acc} AND ${curr}`))}`
+                : sql``;
+
+            result = await sql`
+                SELECT 
+                    rp."RichiestaID" as "RichiestaID", 
+                    rp."DataRichiesta" as "DataRichiesta", 
+                    rp."DataInizio" as "DataInizio", 
+                    rp."DataFine" as "DataFine",
+                    rp."Motivazione" as "Motivazione", 
+                    rp."Stato" as "Stato", 
+                    rp."DataValutazione" as "DataValutazione",
+                    rp."UtenteID" as "UtenteID",
+                    u."Nome" as "RichiedenteNome",
+                    u."Cognome" as "RichiedenteCognome",
+                    u."Email" as "RichiedenteEmail",
+                    cp."CategoriaID" as "CategoriaID",
+                    cp."Descrizione" as "CategoriaDescrizione",
+                    val."Nome" as "ValutatoreNome",
+                    val."Cognome" as "ValutatoreCognome"
+                FROM "RichiestaPermesso" rp
+                INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
+                INNER JOIN "CategoriaPermesso" cp ON rp."CategoriaID" = cp."CategoriaID"
+                LEFT JOIN "Utente" val ON rp."UtenteValutazioneID" = val."UtenteID"
+                ${whereClause}
+                ORDER BY rp."DataRichiesta" DESC
+            `;
 
             console.log(`[PERMESSI] Trovate ${result.length} richieste`);
 
@@ -99,7 +103,140 @@ const permessiController = (sql) => {
         }
     });
 
+    // GET - Elenco richieste da approvare (solo per responsabili)
+    router.get("/da-approvare", async (req, res) => {
+        console.log("[PERMESSI] Richiesta richieste da approvare");
+
+        // Verifica che l'utente sia un Responsabile
+        if (!req.user || req.user.ruolo !== "Responsabile") {
+            return res.status(403).json({
+                error: "Solo i Responsabili possono vedere le richieste da approvare"
+            });
+        }
+
+        try {
+            const result = await sql`
+                SELECT 
+                    rp."RichiestaID" as "RichiestaID", 
+                    rp."DataRichiesta" as "DataRichiesta", 
+                    rp."DataInizio" as "DataInizio", 
+                    rp."DataFine" as "DataFine",
+                    rp."Motivazione" as "Motivazione", 
+                    rp."Stato" as "Stato", 
+                    rp."DataValutazione" as "DataValutazione",
+                    rp."UtenteID" as "UtenteID",
+                    u."Nome" as "RichiedenteNome",
+                    u."Cognome" as "RichiedenteCognome",
+                    u."Email" as "RichiedenteEmail",
+                    cp."CategoriaID" as "CategoriaID",
+                    cp."Descrizione" as "CategoriaDescrizione",
+                    val."Nome" as "ValutatoreNome",
+                    val."Cognome" as "ValutatoreCognome"
+                FROM "RichiestaPermesso" rp
+                INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
+                INNER JOIN "CategoriaPermesso" cp ON rp."CategoriaID" = cp."CategoriaID"
+                LEFT JOIN "Utente" val ON rp."UtenteValutazioneID" = val."UtenteID"
+                WHERE rp."Stato" = 'In attesa'::stato_richiesta_enum
+                ORDER BY rp."DataRichiesta" ASC
+            `;
+
+            console.log(`[PERMESSI] Trovate ${result.length} richieste da approvare`);
+
+            return res.json({
+                success: true,
+                count: result.length,
+                data: result
+            });
+
+        } catch (err) {
+            console.error("[PERMESSI] Errore nel recupero richieste da approvare:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
+    // GET - Statistiche aggregate richieste approvate (solo per responsabili) - REQUISITO AVANZATO
+    router.get("/statistiche", async (req, res) => {
+        console.log("[PERMESSI] Richiesta statistiche");
+
+        // Verifica che l'utente sia un Responsabile
+        if (!req.user || req.user.ruolo !== "Responsabile") {
+            return res.status(403).json({
+                error: "Solo i Responsabili possono vedere le statistiche"
+            });
+        }
+
+        const { utenteId, mese, anno } = req.query;
+
+        try {
+            // Costruisci i filtri
+            const filters = [sql`rp."Stato" = 'Approvato'::stato_richiesta_enum`];
+
+            if (utenteId) {
+                filters.push(sql`rp."UtenteID" = ${parseInt(utenteId)}`);
+            }
+
+            if (mese && anno) {
+                filters.push(sql`EXTRACT(MONTH FROM rp."DataInizio") = ${parseInt(mese)}`);
+                filters.push(sql`EXTRACT(YEAR FROM rp."DataInizio") = ${parseInt(anno)}`);
+            } else if (anno) {
+                filters.push(sql`EXTRACT(YEAR FROM rp."DataInizio") = ${parseInt(anno)}`);
+            }
+
+            const whereClause = sql`WHERE ${sql(filters.reduce((acc, curr, i) =>
+                i === 0 ? curr : sql`${acc} AND ${curr}`))}`;
+
+            // Query per statistiche aggregate
+            const result = await sql`
+                SELECT 
+                    u."UtenteID" as "UtenteID",
+                    u."Nome" as "Nome",
+                    u."Cognome" as "Cognome",
+                    u."Email" as "Email",
+                    COUNT(rp."RichiestaID") as "NumeroRichieste",
+                    SUM(rp."DataFine" - rp."DataInizio" + 1) as "GiorniTotaliRichiesti",
+                    SUM(CASE WHEN rp."Stato" = 'Approvato' THEN (rp."DataFine" - rp."DataInizio" + 1) ELSE 0 END) as "GiorniTotaliApprovati",
+                    EXTRACT(MONTH FROM rp."DataInizio") as "Mese",
+                    EXTRACT(YEAR FROM rp."DataInizio") as "Anno"
+                FROM "RichiestaPermesso" rp
+                INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
+                ${whereClause}
+                GROUP BY u."UtenteID", u."Nome", u."Cognome", u."Email", EXTRACT(MONTH FROM rp."DataInizio"), EXTRACT(YEAR FROM rp."DataInizio")
+                ORDER BY u."Cognome", u."Nome", EXTRACT(YEAR FROM rp."DataInizio") DESC, EXTRACT(MONTH FROM rp."DataInizio") DESC
+            `;
+
+            console.log(`[PERMESSI] Trovate ${result.length} statistiche aggregate`);
+
+            return res.json({
+                success: true,
+                count: result.length,
+                data: result.map(row => ({
+                    UtenteID: row.UtenteID,
+                    Nome: row.Nome,
+                    Cognome: row.Cognome,
+                    Email: row.Email,
+                    NumeroRichieste: parseInt(row.NumeroRichieste),
+                    GiorniTotaliRichiesti: parseInt(row.GiorniTotaliRichiesti),
+                    GiorniTotaliApprovati: parseInt(row.GiorniTotaliApprovati),
+                    Mese: row.Mese ? parseInt(row.Mese) : null,
+                    Anno: row.Anno ? parseInt(row.Anno) : null
+                }))
+            });
+
+        } catch (err) {
+            console.error("[PERMESSI] Errore nel recupero statistiche:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
     // GET - Ottieni una singola richiesta per ID
+    // Dipendenti: possono vedere solo le proprie richieste
+    // Responsabili: possono vedere tutte le richieste
     router.get("/:id", async (req, res) => {
         console.log("[PERMESSI] Richiesta permesso ID:", req.params.id);
         const { id } = req.params;
@@ -107,22 +244,22 @@ const permessiController = (sql) => {
         try {
             const result = await sql`
                 SELECT 
-                    rp."RichiestaID", 
-                    rp."DataRichiesta", 
-                    rp."DataInizio", 
-                    rp."DataFine",
-                    rp."Motivazione", 
-                    rp."Stato", 
-                    rp."DataValutazione",
-                    rp."UtenteID",
-                    u."Nome" as richiedentenome,
-                    u."Cognome" as richiedentecognome,
-                    u."Email" as richiedenteemail,
-                    cp."CategoriaID",
-                    cp."Descrizione" as categoriadescrizione,
-                    rp."UtenteValutazioneID",
-                    val."Nome" as valutatornome,
-                    val."Cognome" as valutatorcognome
+                    rp."RichiestaID" as "RichiestaID", 
+                    rp."DataRichiesta" as "DataRichiesta", 
+                    rp."DataInizio" as "DataInizio", 
+                    rp."DataFine" as "DataFine",
+                    rp."Motivazione" as "Motivazione", 
+                    rp."Stato" as "Stato", 
+                    rp."DataValutazione" as "DataValutazione",
+                    rp."UtenteID" as "UtenteID",
+                    u."Nome" as "RichiedenteNome",
+                    u."Cognome" as "RichiedenteCognome",
+                    u."Email" as "RichiedenteEmail",
+                    cp."CategoriaID" as "CategoriaID",
+                    cp."Descrizione" as "CategoriaDescrizione",
+                    rp."UtenteValutazioneID" as "UtenteValutazioneID",
+                    val."Nome" as "ValutatoreNome",
+                    val."Cognome" as "ValutatoreCognome"
                 FROM "RichiestaPermesso" rp
                 INNER JOIN "Utente" u ON rp."UtenteID" = u."UtenteID"
                 INNER JOIN "CategoriaPermesso" cp ON rp."CategoriaID" = cp."CategoriaID"
@@ -136,9 +273,18 @@ const permessiController = (sql) => {
                 });
             }
 
+            const richiesta = result[0];
+
+            // Verifica permessi: i dipendenti possono vedere solo le proprie richieste
+            if (req.user && req.user.ruolo === "Dipendente" && richiesta.UtenteID !== req.user.id) {
+                return res.status(403).json({
+                    error: "Non hai i permessi per visualizzare questa richiesta"
+                });
+            }
+
             return res.json({
                 success: true,
-                data: result[0]
+                data: richiesta
             });
 
         } catch (err) {
@@ -151,14 +297,30 @@ const permessiController = (sql) => {
     });
 
     // POST - Crea una nuova richiesta di permesso
+    // Dipendenti: possono creare solo richieste per se stessi
+    // Responsabili: possono creare richieste per qualsiasi utente
     router.post("/", async (req, res) => {
         console.log("[PERMESSI] Nuova richiesta permesso");
         const { dataInizio, dataFine, categoriaId, motivazione, utenteId } = req.body || {};
+
+        // Verifica autenticazione
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                error: "Autenticazione richiesta"
+            });
+        }
 
         // Validazione campi obbligatori
         if (!dataInizio || !dataFine || !categoriaId || !utenteId) {
             return res.status(400).json({
                 error: "DataInizio, DataFine, CategoriaID e UtenteID sono obbligatori"
+            });
+        }
+
+        // Verifica permessi: i dipendenti possono creare solo richieste per se stessi
+        if (req.user.ruolo === "Dipendente" && parseInt(utenteId) !== req.user.id) {
+            return res.status(403).json({
+                error: "Non hai i permessi per creare richieste per altri utenti"
             });
         }
 
@@ -243,6 +405,13 @@ const permessiController = (sql) => {
         const { id } = req.params;
         const { dataInizio, dataFine, categoriaId, motivazione } = req.body || {};
 
+        // Verifica autenticazione
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                error: "Autenticazione richiesta"
+            });
+        }
+
         // Validazione campi
         if (!dataInizio || !dataFine || !categoriaId) {
             return res.status(400).json({
@@ -284,8 +453,8 @@ const permessiController = (sql) => {
             }
 
             // Verifica che l'utente stia modificando la propria richiesta
-            // (req.user.id viene dal middleware di autenticazione)
-            if (req.user && req.user.id !== richiesta.UtenteID) {
+            // Solo i dipendenti possono modificare le proprie richieste
+            if (req.user.id !== richiesta.UtenteID) {
                 return res.status(403).json({
                     error: "Non hai i permessi per modificare questa richiesta"
                 });
@@ -339,7 +508,141 @@ const permessiController = (sql) => {
         }
     });
 
-    // PUT - Valuta una richiesta (approva o rifiuta)
+    // PUT - Approva una richiesta (solo responsabili)
+    router.put("/:id/approva", async (req, res) => {
+        console.log("[PERMESSI] Approvazione richiesta ID:", req.params.id);
+        const { id } = req.params;
+
+        // Verifica che l'utente sia un Responsabile
+        if (!req.user || req.user.ruolo !== "Responsabile") {
+            return res.status(403).json({
+                error: "Solo i Responsabili possono approvare le richieste"
+            });
+        }
+
+        try {
+            // Verifica che la richiesta esista e sia in attesa
+            const checkRequest = await sql`
+                SELECT "RichiestaID", "Stato" FROM "RichiestaPermesso" WHERE "RichiestaID" = ${id}
+            `;
+
+            if (checkRequest.length === 0) {
+                return res.status(404).json({
+                    error: "Richiesta non trovata"
+                });
+            }
+
+            if (checkRequest[0].stato !== "In attesa") {
+                return res.status(400).json({
+                    error: "La richiesta è già stata valutata"
+                });
+            }
+
+            // Aggiorna la richiesta
+            const result = await sql`
+                UPDATE "RichiestaPermesso"
+                SET 
+                    "Stato" = 'Approvato'::stato_richiesta_enum,
+                    "DataValutazione" = NOW(),
+                    "UtenteValutazioneID" = ${req.user.id}
+                WHERE "RichiestaID" = ${id}
+                RETURNING 
+                    "RichiestaID" as "RichiestaID", 
+                    "Stato" as "Stato", 
+                    "DataValutazione" as "DataValutazione", 
+                    "UtenteValutazioneID" as "UtenteValutazioneID"
+            `;
+
+            console.log(`[PERMESSI] Richiesta ${id} approvata`);
+
+            return res.json({
+                success: true,
+                message: "Richiesta approvata con successo",
+                data: {
+                    RichiestaID: result[0].RichiestaID,
+                    Stato: result[0].Stato,
+                    DataValutazione: result[0].DataValutazione,
+                    UtenteValutazioneID: result[0].UtenteValutazioneID
+                }
+            });
+
+        } catch (err) {
+            console.error("[PERMESSI] Errore nell'approvazione:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
+    // PUT - Rifiuta una richiesta (solo responsabili)
+    router.put("/:id/rifiuta", async (req, res) => {
+        console.log("[PERMESSI] Rifiuto richiesta ID:", req.params.id);
+        const { id } = req.params;
+
+        // Verifica che l'utente sia un Responsabile
+        if (!req.user || req.user.ruolo !== "Responsabile") {
+            return res.status(403).json({
+                error: "Solo i Responsabili possono rifiutare le richieste"
+            });
+        }
+
+        try {
+            // Verifica che la richiesta esista e sia in attesa
+            const checkRequest = await sql`
+                SELECT "RichiestaID", "Stato" FROM "RichiestaPermesso" WHERE "RichiestaID" = ${id}
+            `;
+
+            if (checkRequest.length === 0) {
+                return res.status(404).json({
+                    error: "Richiesta non trovata"
+                });
+            }
+
+            if (checkRequest[0].stato !== "In attesa") {
+                return res.status(400).json({
+                    error: "La richiesta è già stata valutata"
+                });
+            }
+
+            // Aggiorna la richiesta
+            const result = await sql`
+                UPDATE "RichiestaPermesso"
+                SET 
+                    "Stato" = 'Rifiutato'::stato_richiesta_enum,
+                    "DataValutazione" = NOW(),
+                    "UtenteValutazioneID" = ${req.user.id}
+                WHERE "RichiestaID" = ${id}
+                RETURNING 
+                    "RichiestaID" as "RichiestaID", 
+                    "Stato" as "Stato", 
+                    "DataValutazione" as "DataValutazione", 
+                    "UtenteValutazioneID" as "UtenteValutazioneID"
+            `;
+
+            console.log(`[PERMESSI] Richiesta ${id} rifiutata`);
+
+            return res.json({
+                success: true,
+                message: "Richiesta rifiutata con successo",
+                data: {
+                    RichiestaID: result[0].RichiestaID,
+                    Stato: result[0].Stato,
+                    DataValutazione: result[0].DataValutazione,
+                    UtenteValutazioneID: result[0].UtenteValutazioneID
+                }
+            });
+
+        } catch (err) {
+            console.error("[PERMESSI] Errore nel rifiuto:", err);
+            return res.status(500).json({
+                error: "Errore interno del server",
+                details: err.message
+            });
+        }
+    });
+
+    // PUT - Valuta una richiesta (approva o rifiuta) - Mantenuto per retrocompatibilità
     router.put("/:id/valuta", async (req, res) => {
         console.log("[PERMESSI] Valutazione richiesta ID:", req.params.id);
         const { id } = req.params;
@@ -426,15 +729,17 @@ const permessiController = (sql) => {
         }
     });
 
-    // DELETE - Elimina una richiesta (solo se in attesa)
+    // DELETE - Elimina una richiesta
+    // Dipendenti: solo se propria e in attesa
+    // Responsabili: possono eliminare anche richieste approvate
     router.delete("/:id", async (req, res) => {
         console.log("[PERMESSI] Eliminazione richiesta ID:", req.params.id);
         const { id } = req.params;
 
         try {
-            // Verifica che la richiesta esista e sia in attesa
+            // Verifica che la richiesta esista
             const checkRequest = await sql`
-                SELECT "RichiestaID", "Stato" FROM "RichiestaPermesso" WHERE "RichiestaID" = ${id}
+                SELECT "RichiestaID", "Stato", "UtenteID" FROM "RichiestaPermesso" WHERE "RichiestaID" = ${id}
             `;
 
             if (checkRequest.length === 0) {
@@ -443,9 +748,36 @@ const permessiController = (sql) => {
                 });
             }
 
-            if (checkRequest[0].stato !== "In attesa") {
-                return res.status(400).json({
-                    error: "Non è possibile eliminare una richiesta già valutata"
+            const richiesta = checkRequest[0];
+
+            // Se l'utente è un Dipendente
+            if (req.user && req.user.ruolo === "Dipendente") {
+                // I dipendenti possono eliminare solo le proprie richieste in attesa
+                if (richiesta.UtenteID !== req.user.id) {
+                    return res.status(403).json({
+                        error: "Non hai i permessi per eliminare questa richiesta"
+                    });
+                }
+
+                if (richiesta.Stato !== "In attesa") {
+                    return res.status(400).json({
+                        error: "Non è possibile eliminare una richiesta già valutata"
+                    });
+                }
+            }
+            // Se l'utente è un Responsabile
+            else if (req.user && req.user.ruolo === "Responsabile") {
+                // I responsabili possono eliminare richieste approvate o in attesa
+                if (richiesta.Stato !== "In attesa" && richiesta.Stato !== "Approvato") {
+                    return res.status(400).json({
+                        error: "Solo le richieste in attesa o approvate possono essere eliminate dai responsabili"
+                    });
+                }
+            }
+            // Se l'utente non è autenticato o ha un ruolo non valido
+            else {
+                return res.status(403).json({
+                    error: "Non hai i permessi per eliminare richieste"
                 });
             }
 
