@@ -532,7 +532,7 @@ const permessiController = (sql) => {
                 });
             }
 
-            if (checkRequest[0].stato !== "In attesa") {
+            if (checkRequest[0].Stato !== "In attesa") {
                 return res.status(400).json({
                     error: "La richiesta è già stata valutata"
                 });
@@ -599,7 +599,7 @@ const permessiController = (sql) => {
                 });
             }
 
-            if (checkRequest[0].stato !== "In attesa") {
+            if (checkRequest[0].Stato !== "In attesa") {
                 return res.status(400).json({
                     error: "La richiesta è già stata valutata"
                 });
@@ -673,7 +673,7 @@ const permessiController = (sql) => {
                 });
             }
 
-            if (checkRequest[0].stato !== "In attesa") {
+            if (checkRequest[0].Stato !== "In attesa") {
                 return res.status(400).json({
                     error: "La richiesta è già stata valutata"
                 });
