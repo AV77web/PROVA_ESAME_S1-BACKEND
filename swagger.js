@@ -12,8 +12,10 @@ const swaggerUi = require("swagger-ui-express");
  * Configura e restituisce la specifica Swagger
  */
 const getSwaggerSpec = () => {
-  // URL del backend - usa variabile d'ambiente o localhost in sviluppo
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3000";
+  // URL del backend - usa variabile d'ambiente, o URL di produzione, o localhost in sviluppo
+  const isProduction = process.env.NODE_ENV === 'production';
+  const backendUrl = process.env.BACKEND_URL ||
+    (isProduction ? "https://prova-esame-s1-backend.onrender.com" : "http://localhost:3000");
 
   const options = {
     definition: {
@@ -30,8 +32,8 @@ const getSwaggerSpec = () => {
       servers: [
         {
           url: backendUrl,
-          description: process.env.NODE_ENV === 'production' 
-            ? "Server di produzione (Render)" 
+          description: process.env.NODE_ENV === 'production'
+            ? "Server di produzione (Render)"
             : "Server di sviluppo (localhost)"
         },
       ],

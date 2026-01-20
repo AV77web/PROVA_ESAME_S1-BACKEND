@@ -104,7 +104,7 @@ const authController = (sql) => {
      *                   example: Logout effettuato con successo
      *         headers:
      *           Set-Cookie:
-     *             description: Cookie HttpOnly cancellato (maxAge: 0)
+     *             description: "Cookie HttpOnly cancellato (maxAge: 0)"
      *             schema:
      *               type: string
      */

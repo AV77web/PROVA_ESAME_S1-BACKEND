@@ -53,7 +53,7 @@ const registrationController = (sql) => {
      *                 type: string
      *                 enum: [Dipendente, Responsabile]
      *                 example: Dipendente
-     *                 description: Ruolo dell'utente (opzionale, default: Dipendente)
+     *                 description: "Ruolo dell'utente (opzionale, default: Dipendente)"
      *     responses:
      *       201:
      *         description: Utente registrato con successo
