@@ -19,6 +19,7 @@ const authMiddleware = require("./middleware/authMiddleware");
 const permessiController = require("./controller/permessiController");
 const categorieController = require("./controller/categorieController");
 const { verifyToken, verifyRole } = require("./middleware/authMiddleware");
+const { setupSwagger } = require("./swagger");
 const port = process.env.PORT || 3000;
 
 // FRONTEND_URL da Environment Variable ha priorità su config.js
@@ -39,9 +40,27 @@ const sql = neon(process.env.DATABASE_URL);
 app.use(express.json());
 app.use(cookieParser()); // Necessario per leggere req.cookies
 
+/**
+ * @openapi
+ * /:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Verifica che il server sia attivo
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Server attivo
+ *         content:
+ *           text/plain:
+ *             example: Hello World
+ */
 app.get("/", (req, res) => {
     res.send("Hello World");
 });
+
+// Swagger Docs - deve essere configurato dopo express.json() e prima delle routes
+setupSwagger(app);
 
 app.use("/login", loginController(sql));
 app.use("/register", registrationController(sql));

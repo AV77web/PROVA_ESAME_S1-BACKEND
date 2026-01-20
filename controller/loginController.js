@@ -12,6 +12,102 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 
 const loginController = (sql) => {
+    /**
+     * @openapi
+     * /login:
+     *   post:
+     *     summary: Effettua il login di un utente
+     *     description: Autentica un utente tramite email e password. Restituisce un JWT token salvato in un cookie HttpOnly.
+     *     tags:
+     *       - Autenticazione
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - email
+     *               - password
+     *             properties:
+     *               email:
+     *                 type: string
+     *                 format: email
+     *                 example: user@example.com
+     *                 description: Email dell'utente
+     *               password:
+     *                 type: string
+     *                 format: password
+     *                 example: password123
+     *                 description: Password dell'utente
+     *     responses:
+     *       200:
+     *         description: Login effettuato con successo. Il token JWT è salvato in un cookie HttpOnly.
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 message:
+     *                   type: string
+     *                   example: Login effettuato con successo
+     *                 user:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: integer
+     *                       example: 1
+     *                     nome:
+     *                       type: string
+     *                       example: Mario
+     *                     cognome:
+     *                       type: string
+     *                       example: Rossi
+     *                     email:
+     *                       type: string
+     *                       example: user@example.com
+     *                     ruolo:
+     *                       type: string
+     *                       enum: [Dipendente, Responsabile]
+     *                       example: Dipendente
+     *         headers:
+     *           Set-Cookie:
+     *             description: Cookie HttpOnly contenente il JWT token
+     *             schema:
+     *               type: string
+     *       400:
+     *         description: Email e password sono obbligatorie
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Email e password sono obbligatorie
+     *       401:
+     *         description: Credenziali non valide
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Credenziali non valide
+     *       500:
+     *         description: Errore interno del server
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Errore interno del server
+     *                 details:
+     *                   type: string
+     */
     // Login utente
     // La rotta è POST / dato che il prefisso /login verrà usato in index.js
     router.post("/", async (req, res) => {

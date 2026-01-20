@@ -10,6 +10,113 @@ const express = require("express");
 const router = express.Router();
 
 const registrationController = (sql) => {
+    /**
+     * @openapi
+     * /register:
+     *   post:
+     *     summary: Registra un nuovo utente
+     *     description: Crea un nuovo account utente nel sistema. La password viene hashata prima del salvataggio.
+     *     tags:
+     *       - Autenticazione
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - nome
+     *               - cognome
+     *               - email
+     *               - password
+     *             properties:
+     *               nome:
+     *                 type: string
+     *                 example: Mario
+     *                 description: Nome dell'utente
+     *               cognome:
+     *                 type: string
+     *                 example: Rossi
+     *                 description: Cognome dell'utente
+     *               email:
+     *                 type: string
+     *                 format: email
+     *                 example: mario.rossi@example.com
+     *                 description: Email dell'utente (deve essere univoca)
+     *               password:
+     *                 type: string
+     *                 format: password
+     *                 minLength: 6
+     *                 example: password123
+     *                 description: Password dell'utente (minimo 6 caratteri)
+     *               ruolo:
+     *                 type: string
+     *                 enum: [Dipendente, Responsabile]
+     *                 example: Dipendente
+     *                 description: Ruolo dell'utente (opzionale, default: Dipendente)
+     *     responses:
+     *       201:
+     *         description: Utente registrato con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 message:
+     *                   type: string
+     *                   example: Utente registrato con successo
+     *                 user:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: integer
+     *                       example: 1
+     *                     nome:
+     *                       type: string
+     *                       example: Mario
+     *                     cognome:
+     *                       type: string
+     *                       example: Rossi
+     *                     email:
+     *                       type: string
+     *                       example: mario.rossi@example.com
+     *                     ruolo:
+     *                       type: string
+     *                       enum: [Dipendente, Responsabile]
+     *                       example: Dipendente
+     *       400:
+     *         description: Errore di validazione dei dati
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Nome, cognome, email e password sono obbligatorie
+     *       409:
+     *         description: Email già registrata
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Email già registrata
+     *       500:
+     *         description: Errore interno del server
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Errore interno del server
+     *                 details:
+     *                   type: string
+     */
     // Registrazione utente
     // La rotta è POST / dato che il prefisso /register verrà usato in index.js
     router.post("/", async (req, res) => {
