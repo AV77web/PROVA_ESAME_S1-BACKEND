@@ -10,6 +10,76 @@ const router = express.Router();
 
 const permessiController = (sql) => {
 
+    /**
+     * @openapi
+     * /permessi:
+     *   get:
+     *     summary: Ottiene tutte le richieste di permesso
+     *     description: |
+     *       Restituisce la lista delle richieste di permesso con filtri opzionali.
+     *       - Dipendenti: vedono solo le proprie richieste
+     *       - Responsabili: vedono tutte le richieste e possono filtrare per utente
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: utenteId
+     *         schema:
+     *           type: integer
+     *         description: ID dell'utente (solo per Responsabili)
+     *       - in: query
+     *         name: stato
+     *         schema:
+     *           type: string
+     *           enum: [In attesa, Approvato, Rifiutato]
+     *         description: Filtro per stato della richiesta
+     *       - in: query
+     *         name: categoriaId
+     *         schema:
+     *           type: integer
+     *         description: Filtro per categoria di permesso
+     *     responses:
+     *       200:
+     *         description: Lista richieste recuperata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 count:
+     *                   type: integer
+     *                   example: 10
+     *                 data:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       RichiestaID:
+     *                         type: integer
+     *                       DataRichiesta:
+     *                         type: string
+     *                         format: date-time
+     *                       DataInizio:
+     *                         type: string
+     *                         format: date
+     *                       DataFine:
+     *                         type: string
+     *                         format: date
+     *                       Motivazione:
+     *                         type: string
+     *                       Stato:
+     *                         type: string
+     *                         enum: [In attesa, Approvato, Rifiutato]
+     *       401:
+     *         description: Non autenticato
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Ottieni tutte le richieste di permesso (con filtri opzionali)
     // Dipendenti: vedono solo le proprie richieste
     // Responsabili: vedono tutte le richieste
@@ -103,6 +173,41 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/da-approvare:
+     *   get:
+     *     summary: Ottiene le richieste in attesa di approvazione
+     *     description: Restituisce tutte le richieste di permesso con stato "In attesa". Solo i Responsabili possono accedere a questo endpoint.
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     responses:
+     *       200:
+     *         description: Lista richieste da approvare
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 count:
+     *                   type: integer
+     *                   example: 5
+     *                 data:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono vedere le richieste da approvare
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Elenco richieste da approvare (solo per responsabili)
     router.get("/da-approvare", async (req, res) => {
         console.log("[PERMESSI] Richiesta richieste da approvare");
@@ -157,6 +262,72 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/statistiche:
+     *   get:
+     *     summary: Ottiene statistiche aggregate delle richieste approvate
+     *     description: Restituisce statistiche aggregate (numero richieste, giorni totali) per utente e periodo. Solo i Responsabili possono accedere a questo endpoint.
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: utenteId
+     *         schema:
+     *           type: integer
+     *         description: Filtro per ID utente specifico
+     *       - in: query
+     *         name: mese
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           maximum: 12
+     *         description: Filtro per mese (richiede anche anno)
+     *       - in: query
+     *         name: anno
+     *         schema:
+     *           type: integer
+     *         description: Filtro per anno
+     *     responses:
+     *       200:
+     *         description: Statistiche recuperate con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 count:
+     *                   type: integer
+     *                   example: 10
+     *                 data:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       UtenteID:
+     *                         type: integer
+     *                       Nome:
+     *                         type: string
+     *                       Cognome:
+     *                         type: string
+     *                       NumeroRichieste:
+     *                         type: integer
+     *                       GiorniTotaliRichiesti:
+     *                         type: integer
+     *                       GiorniTotaliApprovati:
+     *                         type: integer
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono vedere le statistiche
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Statistiche aggregate richieste approvate (solo per responsabili) - REQUISITO AVANZATO
     router.get("/statistiche", async (req, res) => {
         console.log("[PERMESSI] Richiesta statistiche");
@@ -234,6 +405,57 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/{id}:
+     *   get:
+     *     summary: Ottiene una singola richiesta di permesso per ID
+     *     description: |
+     *       Restituisce i dettagli di una specifica richiesta di permesso.
+     *       - Dipendenti: possono vedere solo le proprie richieste
+     *       - Responsabili: possono vedere tutte le richieste
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della richiesta
+     *     responses:
+     *       200:
+     *         description: Richiesta trovata
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     RichiestaID:
+     *                       type: integer
+     *                     DataRichiesta:
+     *                       type: string
+     *                       format: date-time
+     *                     Stato:
+     *                       type: string
+     *                       enum: [In attesa, Approvato, Rifiutato]
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Non hai i permessi per visualizzare questa richiesta
+     *       404:
+     *         description: Richiesta non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Ottieni una singola richiesta per ID
     // Dipendenti: possono vedere solo le proprie richieste
     // Responsabili: possono vedere tutte le richieste
@@ -296,6 +518,89 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi:
+     *   post:
+     *     summary: Crea una nuova richiesta di permesso
+     *     description: |
+     *       Crea una nuova richiesta di permesso.
+     *       - Dipendenti: possono creare solo richieste per se stessi
+     *       - Responsabili: possono creare richieste per qualsiasi utente
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - dataInizio
+     *               - dataFine
+     *               - categoriaId
+     *               - utenteId
+     *             properties:
+     *               dataInizio:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-02-01"
+     *                 description: Data di inizio del permesso
+     *               dataFine:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-02-05"
+     *                 description: Data di fine del permesso (deve essere successiva a dataInizio)
+     *               categoriaId:
+     *                 type: integer
+     *                 example: 1
+     *                 description: ID della categoria di permesso
+     *               motivazione:
+     *                 type: string
+     *                 example: "Vacanze estive"
+     *                 description: Motivazione della richiesta (opzionale)
+     *               utenteId:
+     *                 type: integer
+     *                 example: 1
+     *                 description: ID dell'utente per cui si richiede il permesso
+     *     responses:
+     *       201:
+     *         description: Richiesta creata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Richiesta di permesso creata con successo
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: integer
+     *                     dataRichiesta:
+     *                       type: string
+     *                       format: date-time
+     *                     stato:
+     *                       type: string
+     *                       example: "In attesa"
+     *       400:
+     *         description: Dati mancanti o non validi
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: I dipendenti possono creare solo richieste per se stessi
+     *       404:
+     *         description: Categoria o utente non trovato
+     *       500:
+     *         description: Errore interno del server
+     */
     // POST - Crea una nuova richiesta di permesso
     // Dipendenti: possono creare solo richieste per se stessi
     // Responsabili: possono creare richieste per qualsiasi utente
@@ -399,6 +704,66 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/{id}:
+     *   put:
+     *     summary: Modifica una richiesta di permesso
+     *     description: |
+     *       Modifica una richiesta di permesso esistente. 
+     *       - La richiesta deve essere in stato "In attesa"
+     *       - I dipendenti possono modificare solo le proprie richieste
+     *       - I responsabili possono modificare qualsiasi richiesta in attesa
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della richiesta da modificare
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - dataInizio
+     *               - dataFine
+     *               - categoriaId
+     *             properties:
+     *               dataInizio:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-02-01"
+     *               dataFine:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-02-05"
+     *               categoriaId:
+     *                 type: integer
+     *                 example: 1
+     *               motivazione:
+     *                 type: string
+     *                 example: "Aggiornamento motivazione"
+     *     responses:
+     *       200:
+     *         description: Richiesta modificata con successo
+     *       400:
+     *         description: Dati non validi o richiesta già valutata
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Non hai i permessi per modificare questa richiesta
+     *       404:
+     *         description: Richiesta o categoria non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // PUT - Modifica una richiesta di permesso (solo se propria e in attesa)
     router.put("/:id", async (req, res) => {
         console.log("[PERMESSI] Modifica richiesta ID:", req.params.id);
@@ -508,6 +873,59 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/{id}/approva:
+     *   put:
+     *     summary: Approva una richiesta di permesso
+     *     description: Approva una richiesta di permesso con stato "In attesa". Solo i Responsabili possono eseguire questa operazione.
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della richiesta da approvare
+     *     responses:
+     *       200:
+     *         description: Richiesta approvata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Richiesta approvata con successo
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     RichiestaID:
+     *                       type: integer
+     *                     Stato:
+     *                       type: string
+     *                       example: "Approvato"
+     *                     DataValutazione:
+     *                       type: string
+     *                       format: date-time
+     *       400:
+     *         description: La richiesta è già stata valutata
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono approvare le richieste
+     *       404:
+     *         description: Richiesta non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // PUT - Approva una richiesta (solo responsabili)
     router.put("/:id/approva", async (req, res) => {
         console.log("[PERMESSI] Approvazione richiesta ID:", req.params.id);
@@ -575,6 +993,59 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/{id}/rifiuta:
+     *   put:
+     *     summary: Rifiuta una richiesta di permesso
+     *     description: Rifiuta una richiesta di permesso con stato "In attesa". Solo i Responsabili possono eseguire questa operazione.
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della richiesta da rifiutare
+     *     responses:
+     *       200:
+     *         description: Richiesta rifiutata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Richiesta rifiutata con successo
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     RichiestaID:
+     *                       type: integer
+     *                     Stato:
+     *                       type: string
+     *                       example: "Rifiutato"
+     *                     DataValutazione:
+     *                       type: string
+     *                       format: date-time
+     *       400:
+     *         description: La richiesta è già stata valutata
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono rifiutare le richieste
+     *       404:
+     *         description: Richiesta non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // PUT - Rifiuta una richiesta (solo responsabili)
     router.put("/:id/rifiuta", async (req, res) => {
         console.log("[PERMESSI] Rifiuto richiesta ID:", req.params.id);
@@ -729,6 +1200,51 @@ const permessiController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /permessi/{id}:
+     *   delete:
+     *     summary: Elimina una richiesta di permesso
+     *     description: |
+     *       Elimina una richiesta di permesso.
+     *       - Dipendenti: possono eliminare solo le proprie richieste in attesa
+     *       - Responsabili: possono eliminare richieste in attesa o approvate
+     *     tags:
+     *       - Permessi
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della richiesta da eliminare
+     *     responses:
+     *       200:
+     *         description: Richiesta eliminata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Richiesta eliminata con successo
+     *       400:
+     *         description: Non è possibile eliminare questa richiesta
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Non hai i permessi per eliminare questa richiesta
+     *       404:
+     *         description: Richiesta non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // DELETE - Elimina una richiesta
     // Dipendenti: solo se propria e in attesa
     // Responsabili: possono eliminare anche richieste approvate

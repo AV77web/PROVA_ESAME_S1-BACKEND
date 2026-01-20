@@ -10,6 +10,46 @@ const router = express.Router();
 
 const categorieController = (sql) => {
 
+    /**
+     * @openapi
+     * /categorie:
+     *   get:
+     *     summary: Ottiene tutte le categorie di permesso
+     *     description: Restituisce la lista completa delle categorie di permesso ordinate per descrizione.
+     *     tags:
+     *       - Categorie
+     *     security:
+     *       - cookieAuth: []
+     *     responses:
+     *       200:
+     *         description: Lista categorie recuperata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 count:
+     *                   type: integer
+     *                   example: 5
+     *                 data:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       CategoriaID:
+     *                         type: integer
+     *                         example: 1
+     *                       Descrizione:
+     *                         type: string
+     *                         example: Ferie
+     *       401:
+     *         description: Non autenticato
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Ottieni tutte le categorie
     router.get("/", async (req, res) => {
         console.log("[CATEGORIE] Richiesta lista categorie");
@@ -41,6 +81,50 @@ const categorieController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /categorie/{id}:
+     *   get:
+     *     summary: Ottiene una singola categoria per ID
+     *     description: Restituisce i dettagli di una specifica categoria di permesso identificata dal suo ID.
+     *     tags:
+     *       - Categorie
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della categoria
+     *     responses:
+     *       200:
+     *         description: Categoria trovata
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     CategoriaID:
+     *                       type: integer
+     *                       example: 1
+     *                     Descrizione:
+     *                       type: string
+     *                       example: Ferie
+     *       401:
+     *         description: Non autenticato
+     *       404:
+     *         description: Categoria non trovata
+     *       500:
+     *         description: Errore interno del server
+     */
     // GET - Ottieni una singola categoria per ID
     router.get("/:id", async (req, res) => {
         console.log("[CATEGORIE] Richiesta categoria ID:", req.params.id);
@@ -76,6 +160,68 @@ const categorieController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /categorie:
+     *   post:
+     *     summary: Crea una nuova categoria di permesso
+     *     description: Crea una nuova categoria di permesso. Solo i Responsabili possono eseguire questa operazione.
+     *     tags:
+     *       - Categorie
+     *     security:
+     *       - cookieAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - descrizione
+     *               - categoriaId
+     *             properties:
+     *               descrizione:
+     *                 type: string
+     *                 example: Permesso per motivi personali
+     *                 description: Descrizione della categoria
+     *               categoriaId:
+     *                 type: integer
+     *                 example: 10
+     *                 description: ID univoco della categoria
+     *     responses:
+     *       201:
+     *         description: Categoria creata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Categoria creata con successo
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     CategoriaID:
+     *                       type: integer
+     *                       example: 10
+     *                     Descrizione:
+     *                       type: string
+     *                       example: Permesso per motivi personali
+     *       400:
+     *         description: Dati mancanti o non validi
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono creare categorie
+     *       409:
+     *         description: Esiste già una categoria con questo ID o descrizione
+     *       500:
+     *         description: Errore interno del server
+     */
     // POST - Crea una nuova categoria (solo Responsabile)
     router.post("/", async (req, res) => {
         console.log("[CATEGORIE] Nuova categoria");
@@ -134,6 +280,72 @@ const categorieController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /categorie/{id}:
+     *   put:
+     *     summary: Modifica una categoria esistente
+     *     description: Aggiorna la descrizione di una categoria esistente. Solo i Responsabili possono eseguire questa operazione.
+     *     tags:
+     *       - Categorie
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della categoria da modificare
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - descrizione
+     *             properties:
+     *               descrizione:
+     *                 type: string
+     *                 example: Ferie annuali
+     *                 description: Nuova descrizione della categoria
+     *     responses:
+     *       200:
+     *         description: Categoria modificata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Categoria modificata con successo
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     CategoriaID:
+     *                       type: integer
+     *                       example: 1
+     *                     Descrizione:
+     *                       type: string
+     *                       example: Ferie annuali
+     *       400:
+     *         description: Dati mancanti o non validi
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono modificare categorie
+     *       404:
+     *         description: Categoria non trovata
+     *       409:
+     *         description: Esiste già un'altra categoria con questa descrizione
+     *       500:
+     *         description: Errore interno del server
+     */
     // PUT - Modifica una categoria esistente (solo Responsabile)
     router.put("/:id", async (req, res) => {
         console.log("[CATEGORIE] Modifica categoria ID:", req.params.id);
@@ -200,6 +412,48 @@ const categorieController = (sql) => {
         }
     });
 
+    /**
+     * @openapi
+     * /categorie/{id}:
+     *   delete:
+     *     summary: Elimina una categoria di permesso
+     *     description: Elimina una categoria di permesso. Non è possibile eliminare categorie associate a richieste di permesso. Solo i Responsabili possono eseguire questa operazione.
+     *     tags:
+     *       - Categorie
+     *     security:
+     *       - cookieAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: integer
+     *         description: ID della categoria da eliminare
+     *     responses:
+     *       200:
+     *         description: Categoria eliminata con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: Categoria eliminata con successo
+     *       401:
+     *         description: Non autenticato
+     *       403:
+     *         description: Solo i Responsabili possono eliminare categorie
+     *       404:
+     *         description: Categoria non trovata
+     *       409:
+     *         description: Impossibile eliminare - ci sono richieste associate a questa categoria
+     *       500:
+     *         description: Errore interno del server
+     */
     // DELETE - Elimina una categoria (solo Responsabile)
     router.delete("/:id", async (req, res) => {
         console.log("[CATEGORIE] Eliminazione categoria ID:", req.params.id);

@@ -12,7 +12,58 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authController = (sql) => {
     // sql è opzionale, non viene usato in questo controller
     // ma lo accettiamo per consistenza con gli altri controller
-    
+
+    /**
+     * @openapi
+     * /auth/me:
+     *   get:
+     *     summary: Ottiene i dati dell'utente autenticato
+     *     description: Restituisce le informazioni dell'utente correntemente autenticato tramite il JWT token presente nel cookie HttpOnly.
+     *     tags:
+     *       - Autenticazione
+     *     security:
+     *       - cookieAuth: []
+     *     responses:
+     *       200:
+     *         description: Dati utente autenticato
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 authenticated:
+     *                   type: boolean
+     *                   example: true
+     *                 user:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: integer
+     *                       example: 1
+     *                     nome:
+     *                       type: string
+     *                       example: Mario
+     *                     cognome:
+     *                       type: string
+     *                       example: Rossi
+     *                     email:
+     *                       type: string
+     *                       example: mario.rossi@example.com
+     *                     ruolo:
+     *                       type: string
+     *                       enum: [Dipendente, Responsabile]
+     *                       example: Dipendente
+     *       401:
+     *         description: Non autenticato - token mancante o non valido
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 error:
+     *                   type: string
+     *                   example: Token non valido
+     */
     // Verifica lo stato di autenticazione (protetto dal middleware)
     // GET /me - Restituisce i dati dell'utente autenticato
     router.get("/me", authMiddleware, (req, res) => {
@@ -32,6 +83,31 @@ const authController = (sql) => {
         });
     });
 
+    /**
+     * @openapi
+     * /auth/logout:
+     *   post:
+     *     summary: Effettua il logout dell'utente
+     *     description: Cancella il cookie HttpOnly contenente il JWT token di autenticazione.
+     *     tags:
+     *       - Autenticazione
+     *     responses:
+     *       200:
+     *         description: Logout effettuato con successo
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 message:
+     *                   type: string
+     *                   example: Logout effettuato con successo
+     *         headers:
+     *           Set-Cookie:
+     *             description: Cookie HttpOnly cancellato (maxAge: 0)
+     *             schema:
+     *               type: string
+     */
     // Logout - Cancella il cookie di autenticazione
     // POST /logout
     router.post("/logout", (req, res) => {
