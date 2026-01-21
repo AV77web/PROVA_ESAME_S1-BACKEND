@@ -127,8 +127,7 @@ const permessiController = (sql) => {
             }
 
             const whereClause = filters.length > 0
-                ? sql`WHERE ${sql(filters.reduce((acc, curr, i) =>
-                    i === 0 ? curr : sql`${acc} AND ${curr}`))}`
+                ? sql`WHERE ${sql.join(filters, sql` AND `)}`
                 : sql``;
 
             result = await sql`
@@ -356,8 +355,9 @@ const permessiController = (sql) => {
                 filters.push(sql`EXTRACT(YEAR FROM rp."DataInizio") = ${parseInt(anno)}`);
             }
 
-            const whereClause = sql`WHERE ${sql(filters.reduce((acc, curr, i) =>
-                i === 0 ? curr : sql`${acc} AND ${curr}`))}`;
+            const whereClause = filters.length > 0
+                ? sql`WHERE ${sql.join(filters, sql` AND `)}`
+                : sql``;
 
             // Query per statistiche aggregate
             const result = await sql`
@@ -678,20 +678,20 @@ const permessiController = (sql) => {
             `;
 
             const newRequest = result[0];
-            console.log("[PERMESSI] Richiesta creata con ID:", newRequest.richiestaid);
+            console.log("[PERMESSI] Richiesta creata con ID:", newRequest.RichiestaID);
 
             return res.status(201).json({
                 success: true,
                 message: "Richiesta di permesso creata con successo",
                 data: {
-                    id: newRequest.richiestaid,
-                    dataRichiesta: newRequest.datarichiesta,
-                    dataInizio: newRequest.datainizio,
-                    dataFine: newRequest.datafine,
-                    categoriaId: newRequest.categoriaid,
-                    motivazione: newRequest.motivazione,
-                    stato: newRequest.stato,
-                    utenteId: newRequest.utenteid
+                    id: newRequest.RichiestaID,
+                    dataRichiesta: newRequest.DataRichiesta,
+                    dataInizio: newRequest.DataInizio,
+                    dataFine: newRequest.DataFine,
+                    categoriaId: newRequest.CategoriaID,
+                    motivazione: newRequest.Motivazione,
+                    stato: newRequest.Stato,
+                    utenteId: newRequest.UtenteID
                 }
             });
 
@@ -1184,10 +1184,10 @@ const permessiController = (sql) => {
                 success: true,
                 message: `Richiesta ${stato.toLowerCase()} con successo`,
                 data: {
-                    id: result[0].richiestaid,
-                    stato: result[0].stato,
-                    dataValutazione: result[0].datavalutazione,
-                    utenteValutazioneId: result[0].utentevalutazioneid
+                    id: result[0].RichiestaID,
+                    stato: result[0].Stato,
+                    dataValutazione: result[0].DataValutazione,
+                    utenteValutazioneId: result[0].UtenteValutazioneID
                 }
             });
 
