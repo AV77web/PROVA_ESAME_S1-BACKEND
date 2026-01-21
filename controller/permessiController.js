@@ -126,9 +126,14 @@ const permessiController = (sql) => {
                 filters.push(sql`rp."CategoriaID" = ${parseInt(categoriaId)}`);
             }
 
-            const whereClause = filters.length > 0
-                ? sql`WHERE ${sql.join(filters, sql` AND `)}`
-                : sql``;
+            let whereClause = sql``;
+            if (filters.length > 0) {
+                // Costruisce dinamicamente "WHERE cond1 AND cond2 AND ..."
+                whereClause = sql`WHERE ${filters[0]}`;
+                for (let i = 1; i < filters.length; i++) {
+                    whereClause = sql`${whereClause} AND ${filters[i]}`;
+                }
+            }
 
             result = await sql`
                 SELECT 
@@ -355,9 +360,13 @@ const permessiController = (sql) => {
                 filters.push(sql`EXTRACT(YEAR FROM rp."DataInizio") = ${parseInt(anno)}`);
             }
 
-            const whereClause = filters.length > 0
-                ? sql`WHERE ${sql.join(filters, sql` AND `)}`
-                : sql``;
+            let whereClause = sql``;
+            if (filters.length > 0) {
+                whereClause = sql`WHERE ${filters[0]}`;
+                for (let i = 1; i < filters.length; i++) {
+                    whereClause = sql`${whereClause} AND ${filters[i]}`;
+                }
+            }
 
             // Query per statistiche aggregate
             const result = await sql`
@@ -1161,7 +1170,7 @@ const permessiController = (sql) => {
                 });
             }
 
-            if (valutatore[0].ruolo !== "Responsabile") {
+            if (valutatore[0].Ruolo !== "Responsabile") {
                 return res.status(403).json({
                     error: "Solo i Responsabili possono valutare le richieste"
                 });
